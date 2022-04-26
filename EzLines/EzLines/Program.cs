@@ -9,9 +9,6 @@ namespace EzLines
         {
             string[] sizeUnits = { "B", "KB", "MB", "GB", "TB" };
             
-            string path = "";
-            string fileType = "";
-            
             if (args.Length < 2)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -20,8 +17,8 @@ namespace EzLines
                 return;
             }
             
-            path = args[0];
-            fileType = args[1];
+            string path = args[0];
+            string fileType = args[1];
 
             bool outputFiles = args.Length == 3 && args[2] == "-o" ? true : false; 
 
