@@ -21,3 +21,6 @@ Here is example command that reads all csharp files with **"cs"** extension. In 
 Total amount of lines: 3421 in 4 files. (434,3 KB)
 ```
 The output displays amount of all lines as well as amount of files (with the extension you've provided) and their size on disk.
+
+# TODO:
+1. Include / exclude blank space and/or comments.
