@@ -1,5 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 
 namespace EzLines
 {
@@ -7,8 +11,8 @@ namespace EzLines
     {
         static void Main(string[] args)
         {
-            string[] sizeUnits = { "B", "KB", "MB", "GB", "TB" };
-            
+            string[] sizeUnits = {"B", "KB", "MB", "GB", "TB"};
+
             if (args.Length < 2)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -16,11 +20,13 @@ namespace EzLines
                 Console.ResetColor();
                 return;
             }
-            
+
             string path = args[0];
             string fileType = args[1];
 
-            bool outputFiles = args.Length == 3 && args[2] == "-o" ? true : false; 
+            int threadBuffer = 200;
+
+            bool outputFiles = args.Length == 3 && args[2] == "-o" ? true : false;
 
             int totalLines = 0;
             int totalFiles = 0;
@@ -35,38 +41,91 @@ namespace EzLines
             }
 
             Console.WriteLine("Searching for files...");
-            foreach (var file in Directory.EnumerateFiles(path, $"*.{fileType}", SearchOption.AllDirectories))
-            {
-                int amountOfLines = File.ReadAllLines(file).Length;
-                //Get the file size
-                FileInfo fileInfo = new FileInfo(file);
-                long fileSize = fileInfo.Length;
-                totalSize += fileSize;
-                totalLines += amountOfLines;
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            List<string> files = Directory.EnumerateFiles(path, $"*.{fileType}", SearchOption.AllDirectories).ToList();
 
-                if (outputFiles) Console.WriteLine(file);
-                
-                totalFiles++;
-            
-                if (totalFiles % 500 == 0)
+            // foreach (var file in files)
+            // {
+            //     int amountOfLines = File.ReadAllLines(file).Length;
+            //     //Get the file size
+            //     FileInfo fileInfo = new FileInfo(file);
+            //     long fileSize = fileInfo.Length;
+            //     totalSize += fileSize;
+            //     totalLines += amountOfLines;
+            //
+            //     if (outputFiles) Console.WriteLine(file);
+            //     
+            //     totalFiles++;
+            //
+            //     if (totalFiles % 500 == 0)
+            //     {
+            //         Console.Write(".");
+            //     }
+            // }
+
+            for (int segmentIndex = 0; segmentIndex < files.Count; segmentIndex += threadBuffer)
+            {
+                List<string> tempFiles = new List<string>();
+
+                int segmentStart = segmentIndex;
+                int segmentEnd = segmentIndex + threadBuffer;
+
+                bool isLastSegment = segmentEnd >= files.Count;
+
+                for (int i = segmentStart; i < segmentEnd; i++)
                 {
-                    Console.Write(".");
-                }
-            }
-            
-            Console.Clear();
-            Console.ForegroundColor = ConsoleColor.Red;
-            float totalSizeInUnit = totalSize / 1000f;
-            string unit = "KB";
+                    if (i > files.Count - 1)
+                    {
+                        isLastSegment = true;
+                        break;
+                    }
 
-            while (totalSizeInUnit > 1000)
-            {
-                totalSizeInUnit /= 1000f;
-                unit = sizeUnits[Array.IndexOf(sizeUnits, unit) + 1];
+                    tempFiles.Add(files[i]);
+                }
+
+                Thread t = new Thread(() =>
+                {
+                    foreach (var file in tempFiles)
+                    {
+                        int amountOfLines = File.ReadAllLines(file).Length;
+                        //Get the file size
+                        FileInfo fileInfo = new FileInfo(file);
+                        long fileSize = fileInfo.Length;
+                        totalSize += fileSize;
+                        totalLines += amountOfLines;
+
+                        if (outputFiles) Console.WriteLine(file);
+
+                        totalFiles++;
+
+                        if (totalFiles % 500 == 0)
+                        {
+                            Console.Write(".");
+                        }
+
+                        if (isLastSegment)
+                        {
+                            Console.Clear();
+                            sw.Stop();
+                                Console.ForegroundColor = ConsoleColor.Red;
+                            float totalSizeInUnit = totalSize / 1000f;
+                            string unit = "KB";
+
+                            while (totalSizeInUnit > 1000)
+                            {
+                                totalSizeInUnit /= 1000f;
+                                unit = sizeUnits[Array.IndexOf(sizeUnits, unit) + 1];
+                            }
+
+                            Console.WriteLine(files.Count);
+                            Console.WriteLine($"Total amount of lines: {totalLines} in {totalFiles} files. ({Math.Round(totalSizeInUnit, 1)} {unit})");
+                            Console.ResetColor();
+                        }
+                    }
+                });
+                t.Start();
             }
-            
-            Console.WriteLine($"Total amount of lines: {totalLines} in {totalFiles} files. ({Math.Round(totalSizeInUnit, 1)} {unit})");
-            Console.ResetColor();
         }
     }
 }
